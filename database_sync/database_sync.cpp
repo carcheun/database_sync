@@ -3,6 +3,7 @@
 
 #include "pch.h"
 #include <iostream>
+#include <fstream>
 #include <filesystem>
 
 #include "ReagentDBClient.h"
@@ -10,7 +11,7 @@
 #include "SQLLiteTbls/ReagTbl.h"
 #include "SQLLiteTbls/PATbl.h"
 
-const std::string SERVER = "http://xiaomingdesktop/";
+std::string SERVER = "";
 namespace fs = std::experimental::filesystem;
 
 #define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
@@ -287,7 +288,6 @@ int CreateReagD(ReagentDBClient rdb) {
 
 int main()
 {
-	ReagentDBClient rdb = ReagentDBClient(SERVER);
 	std::vector<std::string> list_of_pa;
 	std::vector<std::string> list_of_reag;
 
@@ -305,7 +305,18 @@ int main()
 			//list_of_reag.push_back(entry.path().generic_string());
 			list_of_reag.push_back(str_filename);
 		}
+		else if (str_filename.find("settings.txt") != std::string::npos) {
+			std::ifstream setting_file;
+			setting_file.open(entry.path().generic_string());
+			if (setting_file.is_open()) {
+				getline(setting_file, SERVER);
+			}
+			setting_file.close();
+			std::cout << "Setting server as: " << SERVER << std::endl;
+		}
 	}
+
+	ReagentDBClient rdb = ReagentDBClient(SERVER);
 
 	std::cout << "Starting upload sequence...\n";
 
