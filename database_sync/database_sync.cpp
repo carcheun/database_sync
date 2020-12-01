@@ -13,6 +13,17 @@
 const std::string SERVER = "http://xiaomingdesktop/";
 namespace fs = std::experimental::filesystem;
 
+#define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
+#define PBWIDTH 60
+
+void printProgress(double percentage) {
+	int val = (int)(percentage * 100);
+	int lpad = (int)(percentage * PBWIDTH);
+	int rpad = PBWIDTH - lpad;
+	printf("\r%3d%% [%.*s%*s]", val, lpad, PBSTR, rpad, "");
+	fflush(stdout);
+}
+
 int SendPaEntries(ReagentDBClient rdb, std::vector<std::string> list_of_pa) {
 	CPaTbl pa_tbl;
 	std::vector<std::string> paths;
@@ -62,7 +73,6 @@ int SendPaEntries(ReagentDBClient rdb, std::vector<std::string> list_of_pa) {
 			return -1;
 		}
 	}
-
 	return 0;
 }
 
@@ -81,7 +91,7 @@ int SendReagentEntries(ReagentDBClient rdb, std::vector<std::string> list_of_rea
 			continue;
 		}
 
-		std::cout << "Uploading " << file_name << std::endl;
+		std::cout << "\nUploading " << file_name << std::endl;
 
 		std::string autostainer_sn = file_name.substr(6, str_len - 6 - 2);
 
@@ -94,6 +104,9 @@ int SendReagentEntries(ReagentDBClient rdb, std::vector<std::string> list_of_rea
 		std::cout << nCnt << " entries\n";
 
 		json::value arr_reagents = json::value::array();
+
+		double progress = 0.0;
+		printProgress(progress);
 
 		for (int i = 0; i < nCnt; i++) {
 			json::value data;
@@ -123,6 +136,9 @@ int SendReagentEntries(ReagentDBClient rdb, std::vector<std::string> list_of_rea
 					return -1;
 				}
 				arr_reagents = json::value::array();
+
+				progress = (double)(i+1) / (double)nCnt;
+				printProgress(progress);
 			}
 			pCreagTbl.MoveNext();
 		}
@@ -147,10 +163,10 @@ int CreatePA8D(ReagentDBClient rdb) {
 	if (!allPa.is_array())
 		return -1;
 
-	if (!PAFact.Open(PA_FACT))
-		PAFact.Create(PA_FACT);
-	if (!PAUser.Open(PA_USER))
-		PAUser.Create(PA_USER);
+	//if (!PAFact.Open(PA_FACT))
+	PAFact.Create(PA_FACT);
+	//if (!PAUser.Open(PA_USER))
+	PAUser.Create(PA_USER);
 
 	for (auto data : allPa.as_array()) {
 		if (data[U("is_factory")].as_bool())
@@ -216,14 +232,16 @@ int CreateReagD(ReagentDBClient rdb) {
 		return -1;
 
 	// create reag8.d from all the returned information
-	if (!pCreagTbl.Open(REAG_FILE))
-		pCreagTbl.Create(REAG_FILE);
+	//if (!pCreagTbl.Open(REAG_FILE))
+	pCreagTbl.Create(REAG_FILE);
+
+	double progress = 1.0;
+	double total = allReag.size();
 
 	for (auto data : allReag.as_array()) {
 		if (data[U("catalog")].is_null()) {
 			data[U("catalog")] = json::value::string(U(""));
 		}
-
 		pCreagTbl.AddNew();
 
 		int serverDate;
@@ -258,6 +276,9 @@ int CreateReagD(ReagentDBClient rdb) {
 		pCreagTbl.Update();
 		pCreagTbl.SetFilter("");
 		pCreagTbl.Query();
+
+		printProgress(progress / total);
+		progress++;
 	}
 
 	pCreagTbl.Close();
@@ -289,24 +310,24 @@ int main()
 	std::cout << "Starting upload sequence...\n";
 
 	if (SendPaEntries(rdb, list_of_pa) != 0) {
-		std::cout << "Error with server or data! Aborting PA Sync!";
+		std::cout << "\nError with server or data! Aborting PA Sync!";
 		exit(-1);
 	}
 	
 	if (SendReagentEntries(rdb, list_of_reag) != 0) {
-		std::cout << "Error with server or data! Aborting Reagent Sync!";
+		std::cout << "\nError with server or data! Aborting Reagent Sync!";
 		exit(-1);
 	}
 
-	std::cout << "Starting download sequence...\n";
+	std::cout << "\nStarting download sequence...\n";
 
 	if (CreatePA8D(rdb) != 0) {
-		std::cout << "Error with server or data! Aborting Create PA8.d!";
+		std::cout << "\nError with server or data! Aborting Create PA8.d!";
 		exit(-1);
 	}
 
 	if (CreateReagD(rdb) != 0) {
-		std::cout << "Error with server or data! Aborting Create Reag8.d!";
+		std::cout << "\nError with server or data! Aborting Create Reag8.d!";
 		exit(-1);
 	}
 
